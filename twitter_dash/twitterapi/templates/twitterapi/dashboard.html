@@ -1,0 +1,219 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Panel</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .container {
+            display: flex;
+        }
+
+        .sidebar {
+            width: 220px;
+            background-color: #f2f2f2;
+            height: 100vh;
+            padding-top: 2rem;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 1rem;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .sidebar a:hover {
+            background-color: #ddd;
+        }
+
+        .content {
+            padding: 2rem;
+            flex: 1;
+        }
+
+        #dashboard-wrapper {
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #eee;
+        }
+
+        .btn {
+            padding: 5px 10px;
+            margin-right: 5px;
+            border: none;
+            cursor: pointer;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #28a745;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+        }
+
+        .task-image {
+            max-width: 100px;
+            max-height: 60px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <div id="dashboard-wrapper" style="display: none;">
+        <div class="header">
+            <h2 id="welcome-message">Welcome</h2>
+        </div>
+
+        <div class="container">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <a href="#" onclick="logoutUser()">🚪 Logout</a>
+            </div>
+            
+
+            <!-- Page Content -->
+            <div class="content">
+                <h3>Connect with twitter and handle account from here.</h3>
+
+                <button id="connect-btn" class="btn btn-edit">🔗 Connect</button>
+
+                
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const accessToken = localStorage.getItem('access_token');
+
+            if (!accessToken) {
+                window.location.href = "/webadmin/admin/login-page/";
+                return;
+            }
+
+            try {
+                const verifyRes = await fetch("/apis/admin/verify/", {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                if (verifyRes.ok) {
+                    const user = await verifyRes.json();
+                    document.getElementById("welcome-message").innerText = 
+                        `Welcome ${user.full_name || "Admin"}`;
+                    document.getElementById("dashboard-wrapper").style.display = "block";
+                } else {
+                    localStorage.removeItem('access_token');
+                    window.location.href = "/webadmin/admin/login-page/";
+                }
+            } catch (err) {
+                console.error("Error verifying token", err);
+                localStorage.removeItem('access_token');
+                window.location.href = "/webadmin/admin/login-page/";
+            }
+
+            // Connect button event
+            document.getElementById("connect-btn").addEventListener("click", async () => {
+                try {
+                    const response = await fetch("/twitter/connect/", {
+                        method: "GET",
+                        headers: {
+                            "Authorization": `Bearer ${accessToken}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const authUrl = data.auth_url;  
+
+                        // Redirect to auth URL
+                        window.location.href = authUrl;
+                    } else {
+                        const error = await response.json();
+                        alert(error.detail || "Failed to get auth URL");
+                    }
+                } catch (err) {
+                    console.error("Error getting auth URL:", err);
+                    alert("Something went wrong while connecting.");
+                }
+            });
+        });
+    </script>
+
+
+    <script>
+        async function logoutUser() {
+            const confirmLogout = confirm("Are you sure you want to logout?");
+            if (!confirmLogout) return;
+    
+            const accessToken = localStorage.getItem("access_token");
+            if (!accessToken) {
+                window.location.href = "/webadmin/admin/login-page/";
+                return;
+            }
+    
+            try {
+
+                const response = await fetch("/apis/admin/logout/", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${accessToken}`,
+                        "Content-Type": "application/json",
+                    }
+                });
+    
+                if (response.ok) {
+                    localStorage.removeItem("access_token");
+                    alert("Logout successful!");
+                    window.location.href = "/webadmin/admin/login-page/";
+                } else {
+                    const data = await response.json();
+                    alert(data.responseMessage || "Logout failed!");
+                }
+            } catch (err) {
+                console.error("Logout Error:", err);
+                alert("Something went wrong during logout.");
+            }
+        }
+    </script>
+    
+    
+</body>
+</html>

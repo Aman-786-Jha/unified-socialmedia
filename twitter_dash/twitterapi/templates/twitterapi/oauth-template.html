@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Twitter OAuth Callback</title>
+</head>
+<body>
+    <div id="message" style="display: none;"></div>
+    <div id="error" style="color: red;"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async function () {
+            const accessToken = localStorage.getItem('access_token');
+            const urlParams = new URLSearchParams(window.location.search);
+            const state = urlParams.get('state');
+            const code = urlParams.get('code');
+
+            if (!accessToken) {
+                window.location.href = "/webadmin/admin/login-page/";
+                return;
+            }
+
+            if (!code || !state) {
+                document.getElementById("error").innerText = "Invalid callback URL. Missing state or code.";
+                return;
+            }
+
+            try {
+                const response = await fetch(`/twitter/callback/api/?state=${state}&code=${code}`, {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${accessToken}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    document.getElementById("message").style.display = "block";
+                    document.getElementById("message").innerText = result.message || "Twitter account connected successfully!";
+                } else {
+                    document.getElementById("error").innerText = result.error || "Something went wrong while connecting your Twitter account.";
+                }
+            } catch (err) {
+                console.error("OAuth Callback Error:", err);
+                document.getElementById("error").innerText = "Internal error occurred.";
+            }
+        });
+    </script>
+</body>
+</html>
